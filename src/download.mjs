@@ -180,7 +180,8 @@ export async function installMcp(root, repoMcpDir, { log = console.log } = {}) {
   try {
     for (const f of ['package.json', 'package-lock.json']) await fsp.copyFile(path.join(repoMcpDir, f), path.join(work, f));
     // exFAT cannot hold symlinks, so no .bin links; files are copied with links resolved.
-    await run('npm', ['ci', '--no-bin-links', '--no-audit', '--no-fund', '--omit=dev'], { cwd: work, shell: process.platform === 'win32' });
+    // --ignore-scripts: no package may run code on the build computer while installing.
+    await run('npm', ['ci', '--ignore-scripts', '--no-bin-links', '--no-audit', '--no-fund', '--omit=dev'], { cwd: work, shell: process.platform === 'win32' });
     const dest = path.join(root, 'mcp');
     await fsp.rm(dest, { recursive: true, force: true });
     await fsp.mkdir(dest, { recursive: true });

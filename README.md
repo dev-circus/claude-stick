@@ -45,6 +45,14 @@ never touched.
 - A key from `setup-token` is meant for running Claude; some account features may be
   unavailable with it.
 - The browser runs with an isolated, in-memory profile, so no cookies or history stay behind.
+- Downloads come from the official hosts over HTTPS (Claude Code from the same address the
+  official installer uses, Node.js from nodejs.org). The checksums catch broken or swapped
+  files, but they come from the same host, so they cannot protect against a compromised host.
+  Chromium is downloaded by Playwright itself and is not checked by this project.
+- The login key is handed to Claude through an environment variable, which other programs of
+  the same user on the same computer can read while Claude runs.
+- The temp folder is deleted normally, not overwritten. On a computer you do not trust, assume
+  traces of the unpacked vault can remain on its disk.
 - Project folders on the stick are plain files. Put sensitive work into the vault or encrypt
   the stick itself.
 
