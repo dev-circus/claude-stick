@@ -6,13 +6,24 @@ drive, a small terminal menu (in German) and an encrypted vault for login, setti
 
 The stick is a working copy, never the only original. This repo can rebuild it from scratch.
 
+## Kurzanleitung auf Deutsch
+
+1. [`claude-stick.zip` herunterladen](https://github.com/dev-circus/claude-stick/releases/latest) und entpacken.
+2. Den Ordner auf einen USB-Stick oder eine externe Platte (exFAT) kopieren.
+3. Starten: `Start-Mac.command` (Mac, beim ersten Mal per Rechtsklick "Öffnen"), `Start-Windows.bat`
+   (Windows) oder im Terminal `bash Start-Linux.sh` (Linux).
+4. Beim ersten Start lädt der Stick alles Nötige selbst. Dann ein Passwort festlegen, im Menü
+   "Anmelden" wählen und "Claude starten".
+
+Die ausführliche Anleitung mit allen Hinweisen: **[ANLEITUNG.md](ANLEITUNG.md)**.
+
 ## Quick start for everyone (no terminal, no installs)
 
 1. Download `claude-stick.zip` from the
    [latest release](https://github.com/dev-circus/claude-stick/releases/latest) (under 100 KB).
 2. Unpack it onto a stick or external drive formatted as exFAT, or into any folder.
-3. Start it (table below). `ANLEITUNG.txt` inside the zip explains this in German, including the
-   one-time warning macOS and Windows show for downloaded files.
+3. Start it (table below). The German guide (`ANLEITUNG.md` here, `ANLEITUNG.txt` inside the zip)
+   explains this, including the one-time warning macOS and Windows show for downloaded files.
 4. The first start on each computer fetches what that system needs (Node.js, then Claude Code,
    about 400 MB, all checked against the publishers' checksums). The browser is fetched the first
    time you switch it on. You need internet whenever you use Claude, as Claude itself works online.
@@ -42,6 +53,14 @@ The same stick can then be plugged into another system and sets itself up there 
 5. Pick **Claude starten**. Quit with **Beenden** so everything is saved and cleaned up.
 
 The menu works with arrow keys and Enter, or by typing the number. Esc goes back.
+
+## Screenshots
+
+The menu runs in the terminal, works with arrow keys and speaks German.
+
+| First start: set the vault password | Main menu | Pick a project folder |
+| --- | --- | --- |
+| ![First start: the stick asks for a vault password](docs/screenshots/01-start-passwort.png) | ![Main menu with status lines and arrow-key selection](docs/screenshots/02-hauptmenue.png) | ![Choosing the folder Claude works in](docs/screenshots/03-projektordner.png) |
 
 ## What is on the stick
 

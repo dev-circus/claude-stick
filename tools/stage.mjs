@@ -8,6 +8,17 @@ import path from 'node:path';
 const toCrlf = (buf) => Buffer.from(buf.toString('utf8').replace(/\r?\n/g, '\r\n'));
 const toLf = (buf) => Buffer.from(buf.toString('utf8').replace(/\r\n/g, '\n'));
 
+/** Turns the guide's light Markdown into plain text, for people who open it in Notepad. */
+export function mdToText(md) {
+  return md
+    .replace(/\r\n/g, '\n')
+    .replace(/^# (.*)$/gm, (_, t) => `${t}\n${'='.repeat(t.length)}`)
+    .replace(/^## (.*)$/gm, (_, t) => `${t}\n${'-'.repeat(t.length)}`)
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+}
+
 /** Copies the stick's own files from the repo into dest. Never touches downloads or the vault. */
 export async function stageFiles(repo, dest, { nodeVersion }) {
   const put = async (from, to, { crlf = false, lf = false, mode } = {}) => {
@@ -27,7 +38,9 @@ export async function stageFiles(repo, dest, { nodeVersion }) {
   await put('start/Start-Linux.sh', 'Start-Linux.sh', { lf: true, mode: 0o755 });
   await put('start/Start-Windows.bat', 'Start-Windows.bat', { crlf: true });
   await put('start/get-node.ps1', 'launcher/get-node.ps1', { crlf: true });
-  await put('start/ANLEITUNG.txt', 'ANLEITUNG.txt', { crlf: true });
+  // One source for the guide: ANLEITUNG.md in the repo root, shown on GitHub and shipped as plain text.
+  const guide = mdToText(await fsp.readFile(path.join(repo, 'ANLEITUNG.md'), 'utf8'));
+  await fsp.writeFile(path.join(dest, 'ANLEITUNG.txt'), toCrlf(Buffer.from(guide)));
   await put('LICENSE', 'LICENSE');
   await put('mcp/package.json', 'mcp/package.json');
   await put('mcp/package-lock.json', 'mcp/package-lock.json');

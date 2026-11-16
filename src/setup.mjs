@@ -11,7 +11,8 @@ import { confirm, dim, red, say } from './ui.mjs';
 export async function ensureClaude(root, key) {
   if (fs.existsSync(paths(root, key).claude)) return true;
   say(`  Erster Start auf diesem System (${PLATFORMS[key].label}): Claude wird geladen.`);
-  say(dim('  Das passiert einmalig, braucht Internet und etwa 350 MB. Bitte etwas Geduld.'));
+  say(dim('  Das passiert einmalig, braucht Internet und etwa 350 MB.'));
+  say(dim('  Bitte etwas Geduld.'));
   say('');
   try {
     await installClaude(root, key, await getClaudeRelease(), { log: (m) => say(dim(m)) });
@@ -19,7 +20,8 @@ export async function ensureClaude(root, key) {
     return true;
   } catch (err) {
     say(red(`\n  Das Laden hat nicht geklappt: ${err.message}`));
-    say(red('  Ist der Computer online? Du kannst es später im Menü unter "Mehr" erneut versuchen.'));
+    say(red('  Ist der Computer online? Du kannst es später im Menü unter'));
+    say(red('  "Mehr" erneut versuchen.'));
     return false;
   }
 }

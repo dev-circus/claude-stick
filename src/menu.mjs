@@ -87,7 +87,8 @@ async function shutdown() {
       say(yellow(`  Backup nicht möglich: ${err.message}`));
     }
   }
-  say(green('  Fertig. Alles ist verschlüsselt gespeichert. Du kannst den Stick jetzt sicher auswerfen.'));
+  say(green('  Fertig. Alles ist verschlüsselt gespeichert.'));
+  say(green('  Du kannst den Stick jetzt sicher auswerfen.'));
 }
 
 function banner() {
@@ -102,7 +103,8 @@ async function firstRun() {
   say('  Der Stick hat noch keinen Tresor. Wir legen jetzt einen an.');
   say('');
   say('  Im Tresor liegen dein Login, deine Einstellungen und der Verlauf.');
-  say('  Er ist mit deinem Passwort verschlüsselt. ' + bold('Das Passwort lässt sich nicht zurücksetzen.'));
+  say('  Er ist mit deinem Passwort verschlüsselt.');
+  say('  ' + bold('Das Passwort lässt sich nicht zurücksetzen.'));
   say('  Lege es in deinen Passwortmanager, sonst ist alles für immer weg.');
   say('');
   for (;;) {
@@ -214,11 +216,11 @@ async function login() {
   say(bold('  Anmelden (einmalig)'));
   say('');
   say('  1. Gleich öffnet sich dein Webbrowser zum Anmelden.');
-  say('  2. Danach zeigt Claude einen langen Schlüssel an, der mit sk-ant- beginnt.');
+  say('  2. Danach zeigt Claude einen langen Schlüssel an (sk-ant-...).');
   say('  3. Kopiere ihn und füge ihn hier ein (er bleibt dabei unsichtbar).');
   say('');
   say(dim('  Der Schlüssel wird nur verschlüsselt auf dem Stick gespeichert.'));
-  say(dim('  Verlierst du den Stick, widerrufst du ihn in deinen Claude-Kontoeinstellungen.'));
+  say(dim('  Verlierst du den Stick, widerrufst du ihn in deinen Kontoeinstellungen.'));
   say('');
   if (!fs.existsSync(P.claude)) {
     say(red('  Claude fehlt für dieses System auf dem Stick.'));
@@ -240,7 +242,8 @@ async function login() {
   if (!pasted.trim()) return;
   const c = classifyToken(pasted);
   if (!c) {
-    say(yellow('  Das sieht nicht wie ein Schlüssel aus (er beginnt mit sk-ant-). Nichts gespeichert.'));
+    say(yellow('  Das sieht nicht wie ein Schlüssel aus (sk-ant-...).'));
+    say(yellow('  Es wurde nichts gespeichert.'));
     return pause();
   }
   await saveToken(dataDir, c.token);
@@ -253,12 +256,14 @@ async function login() {
 
 async function startClaude() {
   if (!fs.existsSync(P.claude)) {
-    say(red(`  Für ${PLATFORMS[KEY].label} ist Claude nicht auf dem Stick. Der Stick muss neu gebaut werden.`));
+    say(red(`  Für ${PLATFORMS[KEY].label} ist Claude nicht auf dem Stick.`));
+    say(red('  Du kannst es im Menü unter "Mehr" laden (Update).'));
     return pause();
   }
   if (!token) {
     say(yellow('  Du bist noch nicht angemeldet (Menüpunkt 4).'));
-    say(dim('  Meldest du dich in Claude selbst an, kann der Login auf diesem Computer hängen bleiben.'));
+    say(dim('  Meldest du dich in Claude selbst an, kann der Login auf diesem'));
+    say(dim('  Computer hängen bleiben.'));
     if (!(await confirm('  Trotzdem starten?'))) return;
   }
   const args = [];
@@ -289,7 +294,8 @@ async function startClaude() {
 }
 
 async function setBackupDir() {
-  say('  In welchen Ordner sollen die Backups? Das kann ein Ordner auf einer anderen Platte oder in der Cloud sein.');
+  say('  In welchen Ordner sollen die Backups? Am besten auf eine andere Platte');
+  say('  oder in einen Cloud-Ordner.');
   say(dim('  Die Backup-Dateien sind verschlüsselt, ohne dein Passwort nutzlos.'));
   let p = await ask('  Ordner (Pfad einfügen, leer = abbrechen): ');
   if (!p) return false;
@@ -343,9 +349,9 @@ async function updateClaude() {
   say('  Suche neue Version ...');
   try {
     const release = await getClaudeRelease();
-    for (const key of Object.keys(PLATFORMS)) {
-      if (fs.existsSync(path.dirname(paths(ROOT, key).claude))) await installClaude(ROOT, key, release);
-    }
+    // This system always (so a failed first download can be repeated), others only if already on the stick.
+    const keys = new Set([KEY, ...Object.keys(PLATFORMS).filter((k) => fs.existsSync(path.dirname(paths(ROOT, k).claude)))]);
+    for (const key of keys) await installClaude(ROOT, key, release);
   } catch (err) {
     say(red(`  Update fehlgeschlagen: ${err.message}`));
   }
@@ -381,7 +387,7 @@ async function moreMenu() {
       [
         { key: '1', label: 'Passwort ändern' },
         { key: '2', label: 'Backup-Ordner ändern', hint: settings.backupDir ?? 'noch keiner' },
-        { key: '3', label: 'Claude auf dem Stick aktualisieren', hint: 'braucht Internet' },
+        { key: '3', label: 'Claude laden oder aktualisieren', hint: 'braucht Internet' },
         { key: '4', label: 'Info' },
         { key: '0', label: 'Zurück', gapBefore: true },
       ],

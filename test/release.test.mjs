@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { downloadVerified, installMcp } from '../src/download.mjs';
-import { stageFiles } from '../tools/stage.mjs';
+import { mdToText, stageFiles } from '../tools/stage.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
 const tmp = () => fsp.mkdtemp(path.join(os.tmpdir(), 'stick-rel-'));
@@ -55,6 +55,17 @@ test('Windows files get Windows line endings, scripts stay executable', async ()
       assert.ok((await fsp.stat(path.join(dest, f))).mode & 0o100, `${f} must be executable`);
     }
   }
+});
+
+test('the guide for the zip is the root guide turned into plain text', async () => {
+  const text = mdToText('# Titel\n\n## Teil\n\n- **fett** und `code`\n- [Link](https://x.de)\n');
+  assert.equal(text, 'Titel\n=====\n\nTeil\n----\n\n- fett und code\n- Link (https://x.de)\n');
+
+  const dest = await tmp();
+  await stageFiles(repo, dest, { nodeVersion: 'v1.0.0' });
+  const guide = await fsp.readFile(path.join(dest, 'ANLEITUNG.txt'), 'utf8');
+  assert.match(guide, /Schritt 1: Herunterladen und entpacken/);
+  assert.equal(/\*\*|`|\]\(|^#/m.test(guide), false, 'no Markdown marks may be left in the text version');
 });
 
 test('the Windows setup script stays plain ASCII so PowerShell 5.1 reads it right', async () => {
