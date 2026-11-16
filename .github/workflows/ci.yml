@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so gitleaks can scan all commits
+      # CLI instead of gitleaks-action: the action needs a paid license in GitHub organizations.
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+            | tar -xz -C /usr/local/bin gitleaks
+      - name: Scan repository history
+        run: gitleaks git --redact --verbose --exit-code 1 .
+
+  audit:
+    name: audit
+    runs-on: ubuntu-latest
+    # The stick has no runtime dependencies. The only third-party code is the pinned
+    # browser tool in mcp/, so that is what gets audited.
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci --ignore-scripts
+      - name: npm audit (fail on high or critical)
+        run: npm audit --audit-level=high
+
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax check
+        run: |
+          for f in src/*.mjs tools/*.mjs test/*.mjs; do node --check "$f"; done
+      - name: Test
+        run: npm test
+
+  # The stick runs on all three systems, so the unit tests run on all three too.
+  cross-os:
+    name: tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test
+        run: npm test
+
+  # The download for non-technical users starts out without Node.js and fetches it itself.
+  # This runs that very first start on each system and checks that a working Node.js appears.
+  first-start:
+    name: first start (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Stage the download folder
+        run: node tools/package.mjs --stage-only "${{ runner.temp }}/claude-stick"
+      - name: First start (Linux)
+        if: runner.os == 'Linux'
+        env:
+          STICK_SETUP_ONLY: "1"
+        run: bash "${{ runner.temp }}/claude-stick/Start-Linux.sh"
+      - name: First start (macOS)
+        if: runner.os == 'macOS'
+        env:
+          STICK_SETUP_ONLY: "1"
+        run: bash "${{ runner.temp }}/claude-stick/Start-Mac.command"
+      - name: First start (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          set STICK_SETUP_ONLY=1
+          "${{ runner.temp }}\claude-stick\Start-Windows.bat"

@@ -1,0 +1,6 @@
+# Shell scripts must keep plain line endings even when checked out on Windows.
+# (The package tool converts the Windows files to CRLF itself.)
+* text=auto
+*.sh text eol=lf
+*.command text eol=lf
+*.mjs text eol=lf

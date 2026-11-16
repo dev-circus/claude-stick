@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Entry point on the stick: unlocks the vault, shows the menu, starts Claude, saves on exit.
 
 import crypto from 'node:crypto';
@@ -9,9 +10,11 @@ import { PLATFORMS, detectPlatform, paths } from './config.mjs';
 import { newSession, sealDir, unsealToDir, verifyPassword, wipeDir } from './vault.mjs';
 import { loadSettings, saveSettings, loadToken, saveToken, classifyToken, tokenEnv } from './state.mjs';
 import { backupVault } from './backup.mjs';
+import { copyrightLine } from './copyright.mjs';
+import { ensureBrowser, ensureClaude } from './setup.mjs';
 import { runClaude, claudeEnv, prepareBrowser, mcpConfig } from './runner.mjs';
 import { getClaudeRelease, installClaude, installedClaudeVersion } from './download.mjs';
-import { ask, askHidden, bold, choose, clear, confirm, cyan, dim, green, pause, red, say, yellow } from './ui.mjs';
+import { ask, askHidden, bold, clear, confirm, cyan, dim, green, pause, red, say, selectMenu, status, yellow } from './ui.mjs';
 
 const ROOT = path.resolve(process.env.STICK_ROOT ?? path.join(import.meta.dirname, '..'));
 const KEY = detectPlatform();
@@ -25,6 +28,9 @@ let settings = null;
 let token = null;
 let busy = false;
 let closing = false;
+let lastMain = 0; // the highlight returns to where you were
+let lastMore = 0;
+const HELP = '↑ ↓ auswählen   Enter bestätigen   oder die Zahl tippen';
 
 const isDir = (p) => {
   try {
@@ -81,13 +87,14 @@ async function shutdown() {
       say(yellow(`  Backup nicht möglich: ${err.message}`));
     }
   }
-  say(green('  Fertig. Alles ist verschlüsselt gespeichert. Du kannst den Stick jetzt sicher auswerfen.'));
+  say(green('  Fertig. Alles ist verschlüsselt gespeichert.'));
+  say(green('  Du kannst den Stick jetzt sicher auswerfen.'));
 }
 
 function banner() {
   clear();
   say(bold(cyan('  CLAUDE-STICK')) + dim(`   ${PLATFORMS[KEY].label}`));
-  say(dim('  ─────────────────────────────────────────────────'));
+  say(dim('  ═══════════════════════════════════════════════════'));
 }
 
 // --- First start and unlock ----------------------------------------------------------
@@ -96,7 +103,8 @@ async function firstRun() {
   say('  Der Stick hat noch keinen Tresor. Wir legen jetzt einen an.');
   say('');
   say('  Im Tresor liegen dein Login, deine Einstellungen und der Verlauf.');
-  say('  Er ist mit deinem Passwort verschlüsselt. ' + bold('Das Passwort lässt sich nicht zurücksetzen.'));
+  say('  Er ist mit deinem Passwort verschlüsselt.');
+  say('  ' + bold('Das Passwort lässt sich nicht zurücksetzen.'));
   say('  Lege es in deinen Passwortmanager, sonst ist alles für immer weg.');
   say('');
   for (;;) {
@@ -162,16 +170,17 @@ async function chooseProject() {
     .map((d) => d.name)
     .sort();
   say(bold('  In welchem Ordner soll Claude arbeiten?'));
+  say(dim('  Dateien in Projektordnern auf dem Stick sind nicht verschlüsselt.'));
+  say(dim(`  ${HELP}`));
   say('');
-  names.forEach((n, i) => say(`  ${i + 1}  ${n}  ${dim('(auf dem Stick)')}`));
-  say(`  n  Neuen Ordner auf dem Stick anlegen`);
-  say(`  e  Einen anderen Ordner auf diesem Computer eingeben`);
-  say(`  0  Zurück`);
-  say('');
-  say(dim('  Hinweis: Dateien in Projektordnern auf dem Stick sind nicht verschlüsselt.'));
-  say('');
-  const items = [...names.map((_, i) => ({ key: String(i + 1) })), { key: 'n' }, { key: 'e' }, { key: '0' }];
-  const pick = await choose(items);
+  const items = [
+    ...names.map((n, i) => ({ key: String(i + 1), label: n, hint: 'auf dem Stick' })),
+    { key: 'n', label: 'Neuen Ordner auf dem Stick anlegen' },
+    { key: 'e', label: 'Anderen Ordner auf diesem Computer eingeben' },
+    { key: '0', label: 'Zurück', gapBefore: true },
+  ];
+  const current = names.findIndex((n) => path.join(P.projects, n) === settings.projectDir);
+  const pick = await selectMenu(items, { initial: Math.max(current, 0) });
   if (pick === '0') return;
   if (pick === 'n') {
     const name = (await ask('  Name des neuen Ordners: ')).replace(/[\\/:*?"<>|]/g, '').trim();
@@ -194,12 +203,12 @@ async function chooseProject() {
 }
 
 async function toggleBrowser() {
+  if (!settings.browser && !(await ensureBrowser(ROOT, KEY))) {
+    say(yellow('  Der Browser bleibt aus.'));
+    return pause();
+  }
   settings.browser = !settings.browser;
   await persist();
-  if (settings.browser && !fs.existsSync(P.browserArchive)) {
-    say(yellow('  Auf dem Stick ist für dieses System noch kein Browser. Claude startet dann ohne.'));
-    await pause();
-  }
 }
 
 async function login() {
@@ -207,31 +216,34 @@ async function login() {
   say(bold('  Anmelden (einmalig)'));
   say('');
   say('  1. Gleich öffnet sich dein Webbrowser zum Anmelden.');
-  say('  2. Danach zeigt Claude einen langen Schlüssel an, der mit sk-ant- beginnt.');
+  say('  2. Danach zeigt Claude einen langen Schlüssel an (sk-ant-...).');
   say('  3. Kopiere ihn und füge ihn hier ein (er bleibt dabei unsichtbar).');
   say('');
   say(dim('  Der Schlüssel wird nur verschlüsselt auf dem Stick gespeichert.'));
-  say(dim('  Verlierst du den Stick, widerrufst du ihn in deinen Claude-Kontoeinstellungen.'));
+  say(dim('  Verlierst du den Stick, widerrufst du ihn in deinen Kontoeinstellungen.'));
   say('');
   if (!fs.existsSync(P.claude)) {
     say(red('  Claude fehlt für dieses System auf dem Stick.'));
     return pause();
   }
   await ask(dim('  Weiter mit Enter ... '));
+  const dir = projectDir();
+  await fsp.mkdir(dir, { recursive: true });
   busy = true;
   try {
-    await runClaude({ bin: P.claude, args: ['setup-token'], cwd: projectDir(), env: claudeEnv({ dataDir }), copyDir: path.join(workDir, 'bin') });
+    await runClaude({ bin: P.claude, args: ['setup-token'], cwd: dir, env: claudeEnv({ dataDir }), copyDir: path.join(workDir, 'bin') });
   } catch (err) {
     say(red(`  Konnte Claude nicht starten: ${err.message}`));
   } finally {
     busy = false;
   }
   say('');
-  const pasted = await askHidden('  Schlüssel einfügen (leer lassen = abbrechen): ');
+  const pasted = await askHidden('  Schlüssel einfügen (leer lassen = abbrechen): ', { paste: true });
   if (!pasted.trim()) return;
   const c = classifyToken(pasted);
   if (!c) {
-    say(yellow('  Das sieht nicht wie ein Schlüssel aus (er beginnt mit sk-ant-). Nichts gespeichert.'));
+    say(yellow('  Das sieht nicht wie ein Schlüssel aus (sk-ant-...).'));
+    say(yellow('  Es wurde nichts gespeichert.'));
     return pause();
   }
   await saveToken(dataDir, c.token);
@@ -244,12 +256,14 @@ async function login() {
 
 async function startClaude() {
   if (!fs.existsSync(P.claude)) {
-    say(red(`  Für ${PLATFORMS[KEY].label} ist Claude nicht auf dem Stick. Der Stick muss neu gebaut werden.`));
+    say(red(`  Für ${PLATFORMS[KEY].label} ist Claude nicht auf dem Stick.`));
+    say(red('  Du kannst es im Menü unter "Mehr" laden (Update).'));
     return pause();
   }
   if (!token) {
     say(yellow('  Du bist noch nicht angemeldet (Menüpunkt 4).'));
-    say(dim('  Meldest du dich in Claude selbst an, kann der Login auf diesem Computer hängen bleiben.'));
+    say(dim('  Meldest du dich in Claude selbst an, kann der Login auf diesem'));
+    say(dim('  Computer hängen bleiben.'));
     if (!(await confirm('  Trotzdem starten?'))) return;
   }
   const args = [];
@@ -280,7 +294,8 @@ async function startClaude() {
 }
 
 async function setBackupDir() {
-  say('  In welchen Ordner sollen die Backups? Das kann ein Ordner auf einer anderen Platte oder in der Cloud sein.');
+  say('  In welchen Ordner sollen die Backups? Am besten auf eine andere Platte');
+  say('  oder in einen Cloud-Ordner.');
   say(dim('  Die Backup-Dateien sind verschlüsselt, ohne dein Passwort nutzlos.'));
   let p = await ask('  Ordner (Pfad einfügen, leer = abbrechen): ');
   if (!p) return false;
@@ -334,9 +349,9 @@ async function updateClaude() {
   say('  Suche neue Version ...');
   try {
     const release = await getClaudeRelease();
-    for (const key of Object.keys(PLATFORMS)) {
-      if (fs.existsSync(path.dirname(paths(ROOT, key).claude))) await installClaude(ROOT, key, release);
-    }
+    // This system always (so a failed first download can be repeated), others only if already on the stick.
+    const keys = new Set([KEY, ...Object.keys(PLATFORMS).filter((k) => fs.existsSync(path.dirname(paths(ROOT, k).claude)))]);
+    for (const key of keys) await installClaude(ROOT, key, release);
   } catch (err) {
     say(red(`  Update fehlgeschlagen: ${err.message}`));
   }
@@ -357,6 +372,8 @@ async function info() {
   } catch {
     /* not available everywhere */
   }
+  say('');
+  say(dim(`  ${copyrightLine()}`));
   await pause();
 }
 
@@ -364,14 +381,19 @@ async function moreMenu() {
   for (;;) {
     banner();
     say(bold('  Mehr'));
+    say(dim(`  ${HELP}`));
     say('');
-    say('  1  Passwort ändern');
-    say(`  2  Backup-Ordner ändern ${dim(settings.backupDir ? `(jetzt: ${settings.backupDir})` : '(noch keiner)')}`);
-    say('  3  Claude auf dem Stick aktualisieren (braucht Internet)');
-    say('  4  Info');
-    say('  0  Zurück');
-    say('');
-    const pick = await choose(['1', '2', '3', '4', '0'].map((key) => ({ key })));
+    const pick = await selectMenu(
+      [
+        { key: '1', label: 'Passwort ändern' },
+        { key: '2', label: 'Backup-Ordner ändern', hint: settings.backupDir ?? 'noch keiner' },
+        { key: '3', label: 'Claude laden oder aktualisieren', hint: 'braucht Internet' },
+        { key: '4', label: 'Info' },
+        { key: '0', label: 'Zurück', gapBefore: true },
+      ],
+      { initial: lastMore },
+    );
+    lastMore = ['1', '2', '3', '4', '0'].indexOf(pick);
     if (pick === '0') return;
     if (pick === '1') await changePassword();
     if (pick === '2') await setBackupDir();
@@ -383,20 +405,27 @@ async function moreMenu() {
 async function mainMenu() {
   for (;;) {
     banner();
-    say(`  Projektordner  ${projectDir()}`);
-    say(`  Browser        ${settings.browser ? green('an') : 'aus'}`);
-    say(`  Login          ${token ? green('gespeichert') : yellow('noch nicht eingerichtet')}`);
-    say(`  Backup         ${settings.backupDir ?? dim('noch nicht eingerichtet')}`);
+    say(status('Ordner', 'ok', projectDir()));
+    say(status('Browser', settings.browser ? 'ok' : 'off', settings.browser ? 'an' : 'aus'));
+    say(status('Login', token ? 'ok' : 'warn', token ? 'gespeichert' : 'noch nicht eingerichtet (Punkt 4)'));
+    say(status('Backup', settings.backupDir ? 'ok' : 'off', settings.backupDir ?? 'noch nicht eingerichtet'));
     say('');
-    say(bold('  1  Claude starten'));
-    say('  2  Projektordner wählen');
-    say('  3  Browser für Claude ein- oder ausschalten');
-    say('  4  Anmelden (einmalig einrichten)');
-    say('  5  Backup jetzt machen');
-    say('  6  Mehr (Passwort, Backup-Ordner, Update)');
-    say('  0  Beenden (alles wird verschlüsselt gespeichert)');
+    say(dim(`  ${HELP}`));
     say('');
-    const pick = await choose(['1', '2', '3', '4', '5', '6', '0'].map((key) => ({ key })));
+    const keys = ['1', '2', '3', '4', '5', '6', '0'];
+    const pick = await selectMenu(
+      [
+        { key: '1', label: 'Claude starten', primary: true },
+        { key: '2', label: 'Projektordner wählen' },
+        { key: '3', label: 'Browser für Claude', hint: settings.browser ? 'ausschalten' : 'einschalten' },
+        { key: '4', label: 'Anmelden', hint: token ? 'neu einrichten' : 'einmalig nötig' },
+        { key: '5', label: 'Backup jetzt machen' },
+        { key: '6', label: 'Mehr', hint: 'Passwort, Backup-Ordner, Update' },
+        { key: '0', label: 'Beenden', hint: 'speichert alles verschlüsselt', gapBefore: true },
+      ],
+      { initial: lastMain },
+    );
+    lastMain = keys.indexOf(pick);
     if (pick === '0') return;
     if (pick === '1') await startClaude();
     if (pick === '2') await chooseProject();
@@ -413,6 +442,7 @@ async function main() {
     shutdown().finally(() => process.exit(130));
   });
   banner();
+  if (!(await ensureClaude(ROOT, KEY))) await pause();
   await sweepStale();
   workDir = await fsp.mkdtemp(path.join(os.tmpdir(), TMP_PREFIX));
   await fsp.chmod(workDir, 0o700);

@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Small settings and the login key. Everything here lives inside the encrypted vault.
 
 import fsp from 'node:fs/promises';

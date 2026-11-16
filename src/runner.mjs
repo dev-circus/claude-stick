@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Starts Claude Code with the stick's settings and prepares the optional browser.
 
 import fs from 'node:fs';

@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Encrypted container for a whole directory (login token, settings, history).
 //
 // Format:  MAGIC(4) | logN(1) | salt(16) | iv(12) | check(32) | ciphertext | tag(16)

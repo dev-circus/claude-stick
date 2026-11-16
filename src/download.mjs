@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Downloads with checksum verification, used by the build tool and the "update" menu entry.
 
 import crypto from 'node:crypto';
@@ -20,12 +21,22 @@ export async function fetchJson(url) {
   return JSON.parse(await fetchText(url));
 }
 
-/** Streams url to dest, checks the SHA-256 and only then moves it into place. */
-export async function downloadVerified(url, dest, { sha256, onProgress } = {}) {
+/**
+ * Streams url to dest, checks the checksum and only then moves the file into place.
+ * Give either `sha256` (hex) or `integrity` in the npm style, e.g. "sha512-<base64>".
+ */
+export async function downloadVerified(url, dest, { sha256, integrity, onProgress } = {}) {
+  let algo = 'sha256';
+  let expectB64 = null;
+  if (integrity) {
+    const m = /^(sha256|sha384|sha512)-([A-Za-z0-9+/=]+)$/.exec(integrity.trim());
+    if (!m) throw new Error(`Unbekanntes Prüfsummenformat: ${integrity.slice(0, 20)}`);
+    [, algo, expectB64] = m;
+  }
   const res = await fetch(url);
   if (!res.ok || !res.body) throw new Error(`Download fehlgeschlagen (${res.status}): ${url}`);
   const total = Number(res.headers.get('content-length')) || 0;
-  const hash = crypto.createHash('sha256');
+  const hash = crypto.createHash(algo);
   let got = 0;
   const part = `${dest}.part`;
   await fsp.mkdir(path.dirname(dest), { recursive: true });
@@ -42,10 +53,10 @@ export async function downloadVerified(url, dest, { sha256, onProgress } = {}) {
       }),
       fs.createWriteStream(part),
     );
-    const actual = hash.digest('hex');
-    if (sha256 && actual !== sha256.toLowerCase()) {
-      throw new Error(`Prüfsumme stimmt nicht, Datei verworfen: ${path.basename(dest)}`);
-    }
+    const digest = hash.digest();
+    const actual = digest.toString('hex');
+    const bad = (sha256 && actual !== sha256.toLowerCase()) || (expectB64 && digest.toString('base64') !== expectB64);
+    if (bad) throw new Error(`Prüfsumme stimmt nicht, Datei verworfen: ${path.basename(dest)}`);
     await fsp.rename(part, dest);
     return actual;
   } catch (err) {
@@ -67,13 +78,14 @@ function run(cmd, args, opts = {}) {
   });
 }
 
-export async function extractArchive(archive, dir) {
+/** Unpacks zip, tar.gz or tar.xz into dir. `strip` drops that many leading path parts. */
+export async function extractArchive(archive, dir, { strip = 0 } = {}) {
   await fsp.mkdir(dir, { recursive: true });
   // bsdtar (macOS, Windows 10+) reads zip, tar.gz and tar.xz; GNU tar needs unzip for zip.
   if (archive.endsWith('.zip') && process.platform === 'linux') {
     await run('unzip', ['-q', archive, '-d', dir]);
   } else {
-    await run('tar', ['-xf', archive, '-C', dir]);
+    await run('tar', ['-xf', archive, '-C', dir, ...(strip ? [`--strip-components=${strip}`] : [])]);
   }
 }
 
@@ -174,19 +186,39 @@ export async function installNode(root, key, release, { force = false, log = con
 
 // --- Playwright MCP and Chromium ----------------------------------------------------
 
-/** Installs the pinned @playwright/mcp (see mcp/package-lock.json) into root/mcp. */
-export async function installMcp(root, repoMcpDir, { log = console.log } = {}) {
+/**
+ * Installs the pinned browser tool into root/mcp without npm: every package listed in
+ * lockDir/package-lock.json is downloaded from the registry, checked against the lockfile's
+ * integrity hash and unpacked. No package can run any code during this.
+ */
+export async function installMcp(root, lockDir, { log = console.log, allowedHosts = ['registry.npmjs.org'] } = {}) {
+  const lock = JSON.parse(await fsp.readFile(path.join(lockDir, 'package-lock.json'), 'utf8'));
+  const entries = Object.entries(lock.packages ?? {}).filter(
+    ([key, pkg]) => key.startsWith('node_modules/') && pkg.resolved && !pkg.optional && !pkg.dev,
+  );
+  if (!entries.length) throw new Error('In package-lock.json stehen keine Pakete.');
+
+  const dest = path.join(root, 'mcp');
   const work = await fsp.mkdtemp(path.join(os.tmpdir(), 'stick-mcp-'));
   try {
-    for (const f of ['package.json', 'package-lock.json']) await fsp.copyFile(path.join(repoMcpDir, f), path.join(work, f));
-    // exFAT cannot hold symlinks, so no .bin links; files are copied with links resolved.
-    await run('npm', ['ci', '--no-bin-links', '--no-audit', '--no-fund', '--omit=dev'], { cwd: work, shell: process.platform === 'win32' });
-    const dest = path.join(root, 'mcp');
-    await fsp.rm(dest, { recursive: true, force: true });
+    const modules = path.join(work, 'node_modules');
+    for (const [key, pkg] of entries) {
+      if (!pkg.integrity) throw new Error(`Keine Prüfsumme für ${key} in package-lock.json`);
+      if (!allowedHosts.includes(new URL(pkg.resolved).hostname)) throw new Error(`Unerlaubte Quelle für ${key}`);
+      const target = path.resolve(work, ...key.split('/'));
+      if (!target.startsWith(`${path.resolve(modules)}${path.sep}`)) throw new Error(`Unzulässiger Pfad: ${key}`);
+      const file = path.join(work, `${crypto.randomUUID()}.tgz`);
+      await downloadVerified(pkg.resolved, file, { integrity: pkg.integrity });
+      await extractArchive(file, target, { strip: 1 }); // npm tarballs wrap everything in "package/"
+    }
+    // Only now touch the stick, so a failed download leaves an existing install intact.
     await fsp.mkdir(dest, { recursive: true });
-    await fsp.cp(path.join(work, 'node_modules'), path.join(dest, 'node_modules'), { recursive: true, dereference: true });
-    for (const f of ['package.json', 'package-lock.json']) await fsp.copyFile(path.join(work, f), path.join(dest, f));
-    log('  Playwright-MCP: fertig');
+    await fsp.rm(path.join(dest, 'node_modules'), { recursive: true, force: true });
+    await fsp.cp(modules, path.join(dest, 'node_modules'), { recursive: true });
+    if (path.resolve(lockDir) !== path.resolve(dest)) {
+      for (const f of ['package.json', 'package-lock.json']) await fsp.copyFile(path.join(lockDir, f), path.join(dest, f));
+    }
+    log('  Playwright-MCP: fertig, Prüfsummen stimmen');
   } finally {
     await fsp.rm(work, { recursive: true, force: true });
   }

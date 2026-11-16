@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
