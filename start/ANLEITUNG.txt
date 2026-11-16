@@ -7,11 +7,20 @@ Was du brauchst
   - ein Claude-Konto mit Abo
   - etwa 1 GB freien Platz
 
-SCHRITT 1: Entpacken
-  Entpacke dieses Paket am besten direkt auf einen USB-Stick oder eine
-  externe Platte. Das Format sollte "exFAT" sein, dann lesen Mac, Windows
-  und Linux dieselben Dateien. Du kannst es auch in einen normalen Ordner
-  entpacken, dann ist es nicht portabel.
+SCHRITT 1: Herunterladen und entpacken
+  Lade die Datei "claude-stick.zip" von der Seite "Releases" des Projekts
+  auf GitHub herunter. Eine ZIP-Datei ist ein zusammengepackter Ordner.
+  Damit du ihn benutzen kannst, musst du ihn "entpacken":
+    Mac:      Doppelklick auf die ZIP-Datei. Daneben erscheint ein Ordner.
+    Windows:  Rechtsklick auf die ZIP-Datei, "Alle extrahieren ...", dann
+              "Extrahieren". Nicht einfach in der ZIP-Datei doppelklicken,
+              so startet das Programm nicht richtig.
+    Linux:    Rechtsklick auf die Datei, "Hier entpacken".
+  Du bekommst einen Ordner "claude-stick". Kopiere ihn auf einen USB-Stick
+  oder eine externe Platte, wenn du ihn auf mehreren Computern dabeihaben
+  willst. Das Format der Platte sollte "exFAT" sein, dann lesen Mac,
+  Windows und Linux dieselben Dateien. Lässt du den Ordner auf dem
+  Computer, funktioniert er nur dort.
 
 SCHRITT 2: Starten
   Mac:      Rechtsklick auf "Start-Mac.command", dann "Öffnen", dann noch
