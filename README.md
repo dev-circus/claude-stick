@@ -6,9 +6,23 @@ drive, a small terminal menu (in German) and an encrypted vault for login, setti
 
 The stick is a working copy, never the only original. This repo can rebuild it from scratch.
 
-## Quick start
+## Quick start for everyone (no terminal, no installs)
 
-1. Build the stick once (needs Node.js 20+ and about 3 GB free):
+1. Download `claude-stick.zip` from the
+   [latest release](https://github.com/dev-circus/claude-stick/releases/latest) (under 100 KB).
+2. Unpack it onto a stick or external drive formatted as exFAT, or into any folder.
+3. Start it (table below). `ANLEITUNG.txt` inside the zip explains this in German, including the
+   one-time warning macOS and Windows show for downloaded files.
+4. The first start on each computer fetches what that system needs (Node.js, then Claude Code,
+   about 400 MB, all checked against the publishers' checksums). The browser is fetched the first
+   time you switch it on. You need internet whenever you use Claude, as Claude itself works online.
+
+The same stick can then be plugged into another system and sets itself up there as well.
+
+## Quick start for developers
+
+1. Build a full stick yourself (needs Node.js 20+ and about 3 GB free). This fetches every
+   system up front, so the stick also works offline for starting and unlocking:
 
    ```bash
    node tools/build.mjs /Volumes/CLAUDE
@@ -99,8 +113,15 @@ and keeps the newest 10 copies. It also does this automatically when the menu is
 ## Development
 
 ```bash
-npm test      # unit tests: vault, downloads, settings, backup, menu keys, browser lookup
+npm test                                   # unit tests
+node tools/package.mjs --out dist          # makes dist/claude-stick.zip (the small download)
+git tag v0.1.0 && git push origin v0.1.0   # CI builds the zip and attaches it to a release
 ```
+
+`tools/stage.mjs` is the one list of files a stick consists of; the build tool and the package
+tool both use it. The browser tool is installed straight from `mcp/package-lock.json`: each
+package is downloaded from the npm registry, checked against the lockfile's hash and unpacked,
+with no npm and no install scripts involved.
 
 No runtime dependencies besides Node.js. `mcp/package.json` and its lockfile pin the browser
 tool that gets installed onto the stick. CI runs a secrets scan, an audit of that tool and the

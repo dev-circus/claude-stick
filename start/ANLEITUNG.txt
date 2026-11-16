@@ -1,0 +1,44 @@
+CLAUDE-STICK - Anleitung
+========================
+
+Was du brauchst
+  - Internet, immer. Claude arbeitet nur online. Beim ersten Start auf
+    einem Computer werden außerdem die Programme geladen.
+  - ein Claude-Konto mit Abo
+  - etwa 1 GB freien Platz
+
+SCHRITT 1: Entpacken
+  Entpacke dieses Paket am besten direkt auf einen USB-Stick oder eine
+  externe Platte. Das Format sollte "exFAT" sein, dann lesen Mac, Windows
+  und Linux dieselben Dateien. Du kannst es auch in einen normalen Ordner
+  entpacken, dann ist es nicht portabel.
+
+SCHRITT 2: Starten
+  Mac:      Rechtsklick auf "Start-Mac.command", dann "Öffnen", dann noch
+            einmal "Öffnen". Das ist nur beim ersten Mal nötig, danach
+            reicht ein Doppelklick.
+  Windows:  Doppelklick auf "Start-Windows.bat". Erscheint die Meldung
+            "Der Computer wurde durch Windows geschützt", klicke auf
+            "Weitere Informationen" und dann auf "Trotzdem ausführen".
+  Linux:    Öffne ein Terminal, wechsle mit "cd" in den Ordner und tippe:
+            bash Start-Linux.sh
+
+SCHRITT 3: Einrichten
+  Beim ersten Start lädt das Programm alles Nötige selbst. Das sind etwa
+  400 MB und dauert ein paar Minuten. Danach:
+    1. Lege ein Passwort fest (mindestens 10 Zeichen). Es lässt sich nicht
+       zurücksetzen. Bewahre es gut auf, am besten in einem Passwortmanager.
+    2. Wähle im Menü "Anmelden" und folge den Hinweisen. Das ist nur
+       einmal nötig, der Login wird verschlüsselt auf dem Stick gespeichert.
+    3. Wähle "Claude starten".
+
+Bedienung
+  Pfeiltasten bewegen die Markierung, Enter bestätigt. Du kannst auch die
+  Zahl tippen. Mit Esc kommst du zurück.
+
+Wichtig
+  - Beende immer über "Beenden" im Menü. Dabei wird alles verschlüsselt
+    gespeichert. Danach den Stick sicher auswerfen.
+  - Auf Firmen- und Schulrechnern mit Sperren (Gruppenrichtlinien) läuft
+    das Programm oft nicht. Nutze dort claude.ai im Browser.
+  - Dateien im Ordner "projekte" auf dem Stick sind nicht verschlüsselt.

@@ -8,6 +8,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { DEFAULT_PLATFORMS, PLATFORMS } from '../src/config.mjs';
 import { getClaudeRelease, getNodeRelease, installBrowser, installClaude, installMcp, installNode } from '../src/download.mjs';
+import { stageFiles } from './stage.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
 const args = process.argv.slice(2);
@@ -46,25 +47,18 @@ if (free < 3 * 1024 ** 3) {
 console.log(`Baue Stick nach ${root}`);
 console.log(`Systeme: ${platforms.join(', ')}${withBrowser ? '' : ' (ohne Browser)'}\n`);
 
-// 1. Our own files (small, always refreshed)
-console.log('Programmdateien kopieren ...');
-await fsp.mkdir(path.join(root, 'launcher'), { recursive: true });
-for (const f of (await fsp.readdir(path.join(repo, 'src'))).filter((n) => n.endsWith('.mjs'))) {
-  await fsp.copyFile(path.join(repo, 'src', f), path.join(root, 'launcher', f));
-}
-for (const f of await fsp.readdir(path.join(repo, 'start'))) {
-  let data = await fsp.readFile(path.join(repo, 'start', f));
-  if (f.endsWith('.bat')) data = Buffer.from(data.toString('utf8').replace(/\r?\n/g, '\r\n')); // cmd.exe needs CRLF
-  await fsp.writeFile(path.join(root, f), data);
-  await fsp.chmod(path.join(root, f), 0o755).catch(() => {});
-}
-await fsp.mkdir(path.join(root, 'projekte'), { recursive: true });
-
-// 2. Downloads (every file checked against the publisher's checksum)
-console.log('\nVersionen abfragen ...');
+console.log('Versionen abfragen ...');
 const claude = await getClaudeRelease();
 const node = await getNodeRelease();
 console.log(`  Claude Code ${claude.version}, Node.js ${node.version}\n`);
+
+// 1. Our own files (small, always refreshed)
+console.log('Programmdateien kopieren ...');
+await stageFiles(repo, root, { nodeVersion: node.version });
+await fsp.mkdir(path.join(root, 'projekte'), { recursive: true });
+
+// 2. Downloads (every file checked against the publisher's checksum)
+console.log('');
 
 if (withBrowser) {
   console.log('Playwright-MCP ...');

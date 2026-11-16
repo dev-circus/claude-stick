@@ -81,3 +81,36 @@ jobs:
           node-version: 24
       - name: Test
         run: npm test
+
+  # The download for non-technical users starts out without Node.js and fetches it itself.
+  # This runs that very first start on each system and checks that a working Node.js appears.
+  first-start:
+    name: first start (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Stage the download folder
+        run: node tools/package.mjs --stage-only "${{ runner.temp }}/claude-stick"
+      - name: First start (Linux)
+        if: runner.os == 'Linux'
+        env:
+          STICK_SETUP_ONLY: "1"
+        run: bash "${{ runner.temp }}/claude-stick/Start-Linux.sh"
+      - name: First start (macOS)
+        if: runner.os == 'macOS'
+        env:
+          STICK_SETUP_ONLY: "1"
+        run: bash "${{ runner.temp }}/claude-stick/Start-Mac.command"
+      - name: First start (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          set STICK_SETUP_ONLY=1
+          "${{ runner.temp }}\claude-stick\Start-Windows.bat"

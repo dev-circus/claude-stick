@@ -11,6 +11,7 @@ import { newSession, sealDir, unsealToDir, verifyPassword, wipeDir } from './vau
 import { loadSettings, saveSettings, loadToken, saveToken, classifyToken, tokenEnv } from './state.mjs';
 import { backupVault } from './backup.mjs';
 import { copyrightLine } from './copyright.mjs';
+import { ensureBrowser, ensureClaude } from './setup.mjs';
 import { runClaude, claudeEnv, prepareBrowser, mcpConfig } from './runner.mjs';
 import { getClaudeRelease, installClaude, installedClaudeVersion } from './download.mjs';
 import { ask, askHidden, bold, clear, confirm, cyan, dim, green, pause, red, say, selectMenu, status, yellow } from './ui.mjs';
@@ -200,12 +201,12 @@ async function chooseProject() {
 }
 
 async function toggleBrowser() {
+  if (!settings.browser && !(await ensureBrowser(ROOT, KEY))) {
+    say(yellow('  Der Browser bleibt aus.'));
+    return pause();
+  }
   settings.browser = !settings.browser;
   await persist();
-  if (settings.browser && !fs.existsSync(P.browserArchive)) {
-    say(yellow('  Auf dem Stick ist für dieses System noch kein Browser. Claude startet dann ohne.'));
-    await pause();
-  }
 }
 
 async function login() {
@@ -435,6 +436,7 @@ async function main() {
     shutdown().finally(() => process.exit(130));
   });
   banner();
+  if (!(await ensureClaude(ROOT, KEY))) await pause();
   await sweepStale();
   workDir = await fsp.mkdtemp(path.join(os.tmpdir(), TMP_PREFIX));
   await fsp.chmod(workDir, 0o700);
