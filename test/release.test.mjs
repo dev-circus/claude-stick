@@ -46,8 +46,10 @@ test('Windows files get Windows line endings, scripts stay executable', async ()
     assert.ok(text.includes('\r\n'), `${f} should use CRLF`);
     assert.equal(/[^\r]\n/.test(text), false, `${f} has a bare LF`);
   }
-  const sh = await fsp.readFile(path.join(dest, 'Start-Linux.sh'), 'utf8');
-  assert.equal(sh.includes('\r'), false);
+  for (const f of ['Start-Linux.sh', 'Start-Mac.command']) {
+    const sh = await fsp.readFile(path.join(dest, f), 'utf8');
+    assert.equal(sh.includes('\r'), false, `${f} must use plain line endings`);
+  }
   if (process.platform !== 'win32') {
     for (const f of ['Start-Mac.command', 'Start-Linux.sh']) {
       assert.ok((await fsp.stat(path.join(dest, f))).mode & 0o100, `${f} must be executable`);
