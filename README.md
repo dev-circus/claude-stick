@@ -1,35 +1,56 @@
 # claude-stick
 
-Portable Claude Code for macOS, Windows and Linux. Everything lives on one exFAT partition or
-stick: the programs for each system, an optional browser Claude can drive, a small German
-terminal menu, and an encrypted vault for login, settings and history.
+Portable [Claude Code](https://claude.ai/code) for macOS, Windows and Linux. Everything lives on
+one exFAT partition or stick: the programs for each system, an optional browser Claude can
+drive, a small terminal menu (in German) and an encrypted vault for login, settings and history.
 
 The stick is a working copy, never the only original. This repo can rebuild it from scratch.
 
-## Layout on the stick
+## Quick start
+
+1. Build the stick once (needs Node.js 20+ and about 3 GB free):
+
+   ```bash
+   node tools/build.mjs /Volumes/CLAUDE
+   ```
+
+2. Start it on the computer you are at:
+
+   | System  | How                                                         |
+   | ------- | ----------------------------------------------------------- |
+   | macOS   | double-click `Start-Mac.command`                            |
+   | Windows | double-click `Start-Windows.bat`                            |
+   | Linux   | `bash /media/$USER/CLAUDE/Start-Linux.sh` (path differs by distro) |
+
+3. First start: choose a vault password (at least 10 characters, it cannot be recovered).
+4. In the menu pick **Anmelden** once. Claude shows a long key, you paste it into the menu, it is
+   stored inside the vault. From then on the vault password is all you need, on every system.
+5. Pick **Claude starten**. Quit with **Beenden** so everything is saved and cleaned up.
+
+The menu works with arrow keys and Enter, or by typing the number. Esc goes back.
+
+## What is on the stick
 
 ```
-Start-Mac.command   Start-Windows.bat   Start-Linux.sh   double-click (Linux: bash Start-Linux.sh)
-launcher/           the menu (copied from src/)
-runtime/<system>/   Node.js, runs the menu
-bin/<system>/       Claude Code
-browser/<system>.tar.gz   Chromium, unpacked into a temp folder only when the browser is on
-mcp/                Playwright MCP, lets Claude control that Chromium
-vault.enc           encrypted: login key, Claude config, history, menu settings
-projekte/           default project folders (NOT encrypted)
+Start-Mac.command   Start-Windows.bat   Start-Linux.sh
+launcher/                  the menu (copied from src/)
+runtime/<system>/          Node.js, runs the menu
+bin/<system>/              Claude Code
+browser/<system>.tar.gz    Chromium, unpacked into a temp folder only while the browser is on
+mcp/                       Playwright MCP, lets Claude control that Chromium
+vault.enc                  encrypted: login key, Claude config, history, menu settings
+projekte/                  default project folders (NOT encrypted)
 ```
 
-## Build or update a stick
+## Build or update
 
 ```bash
-node tools/build.mjs /Volumes/CLAUDE
+node tools/build.mjs /Volumes/CLAUDE [--platforms darwin-arm64,win32-x64,linux-x64] [--no-browser] [--force]
 ```
 
-Options: `--platforms darwin-arm64,win32-x64,linux-x64` (default), `--no-browser`, `--force`.
 Systems: `darwin-arm64`, `darwin-x64`, `win32-x64`, `linux-x64`, `linux-arm64`.
-Re-running only fetches what is missing or outdated. Every download is verified against the
-publisher's SHA-256 checksum; a mismatch discards the file. `vault.enc` and `projekte/` are
-never touched.
+Re-running only fetches what is missing or outdated, and it never touches `vault.enc` or
+`projekte/`. The menu also has an update entry for Claude Code itself.
 
 ## Security model
 
@@ -63,11 +84,13 @@ and keeps the newest 10 copies. It also does this automatically when the menu is
 
 ## Known limits
 
-- macOS is tested. On Windows the stick was blocked by a company group policy (programs from
-  removable drives are not allowed); Windows without such a policy and Linux are still untested.
+- macOS is tested by hand. On Windows the stick was blocked by a company group policy; Windows
+  without such a policy and Linux are not tested by hand yet. The unit tests run on Linux, macOS
+  and Windows in CI.
 - Computers with application control (AppLocker, group policy, managed company laptops) do not
   run programs from a stick. This is intended behaviour of those systems and is not worked
   around. Use claude.ai in a browser there.
+- The stick carries the normal glibc Linux build. Alpine (musl) is not included.
 - Chromium on Linux needs the usual desktop libraries (nss, gtk).
 - Linux may mount sticks without permission to run programs. `Start-Linux.sh` falls back to a
   copy in `~/.cache/claude-stick`.
@@ -76,8 +99,17 @@ and keeps the newest 10 copies. It also does this automatically when the menu is
 ## Development
 
 ```bash
-npm test      # unit tests (vault, downloads, settings, backup, browser lookup)
+npm test      # unit tests: vault, downloads, settings, backup, menu keys, browser lookup
 ```
 
 No runtime dependencies besides Node.js. `mcp/package.json` and its lockfile pin the browser
-tool that gets installed onto the stick.
+tool that gets installed onto the stick. CI runs a secrets scan, an audit of that tool and the
+tests on Linux, macOS and Windows.
+
+## License
+
+All rights reserved until a license is added.
+
+---
+
+© 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang

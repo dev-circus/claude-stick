@@ -1,4 +1,5 @@
 #!/bin/bash
+# © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 # Start with:  bash Start-Linux.sh   (file managers often cannot run files from an exFAT stick)
 cd "$(dirname "$0")" || exit 1
 ROOT="$(pwd)"

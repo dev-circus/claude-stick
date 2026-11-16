@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Portable Claude Code for macOS, Windows and Linux with an encrypted vault and a small terminal menu",
+  "author": "Patrick B. Stang",
   "license": "UNLICENSED",
   "type": "module",
   "engines": { "node": ">=20" },

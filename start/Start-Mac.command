@@ -1,4 +1,5 @@
 #!/bin/bash
+# © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 # Double-click to start. Picks the right program for Apple-chip or Intel Macs.
 cd "$(dirname "$0")" || exit 1
 ROOT="$(pwd)"

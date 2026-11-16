@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 import path from 'node:path';
 
 // One entry per system the stick can carry. `exe` is the file extension of programs.

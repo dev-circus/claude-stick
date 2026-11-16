@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Builds (or updates) a stick:  node tools/build.mjs /Volumes/CLAUDE [--platforms a,b] [--no-browser] [--force]
 // Safe to re-run: existing vault.enc, projekte/ and the old Windows prototype files are never touched.
 

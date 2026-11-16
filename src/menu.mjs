@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Entry point on the stick: unlocks the vault, shows the menu, starts Claude, saves on exit.
 
 import crypto from 'node:crypto';
@@ -9,6 +10,7 @@ import { PLATFORMS, detectPlatform, paths } from './config.mjs';
 import { newSession, sealDir, unsealToDir, verifyPassword, wipeDir } from './vault.mjs';
 import { loadSettings, saveSettings, loadToken, saveToken, classifyToken, tokenEnv } from './state.mjs';
 import { backupVault } from './backup.mjs';
+import { copyrightLine } from './copyright.mjs';
 import { runClaude, claudeEnv, prepareBrowser, mcpConfig } from './runner.mjs';
 import { getClaudeRelease, installClaude, installedClaudeVersion } from './download.mjs';
 import { ask, askHidden, bold, clear, confirm, cyan, dim, green, pause, red, say, selectMenu, status, yellow } from './ui.mjs';
@@ -363,6 +365,8 @@ async function info() {
   } catch {
     /* not available everywhere */
   }
+  say('');
+  say(dim(`  ${copyrightLine()}`));
   await pause();
 }
 

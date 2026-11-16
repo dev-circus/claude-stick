@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Downloads with checksum verification, used by the build tool and the "update" menu entry.
 
 import crypto from 'node:crypto';

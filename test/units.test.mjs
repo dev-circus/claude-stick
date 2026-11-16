@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,6 +10,7 @@ import path from 'node:path';
 import { detectPlatform, paths, PLATFORMS } from '../src/config.mjs';
 import { classifyToken, tokenEnv, loadSettings, saveSettings, saveToken, loadToken, DEFAULT_SETTINGS } from '../src/state.mjs';
 import { backupVault } from '../src/backup.mjs';
+import { copyrightLine } from '../src/copyright.mjs';
 import { applyKey, tokenize, parseKey, moveIndex, renderItems } from '../src/ui.mjs';
 import { downloadVerified } from '../src/download.mjs';
 import { findChromium, mcpConfig, claudeEnv, runClaude } from '../src/runner.mjs';
@@ -89,6 +91,12 @@ test('the menu marks exactly the picked line and keeps hints and gaps', () => {
   assert.ok(lines[0].includes('Tipp'));
   assert.equal(lines[2], '');
   assert.equal(renderItems(items, -1, 40).some((l) => l.includes('>')), false);
+});
+
+test('the copyright line shows one year in 2026 and a range afterwards', () => {
+  assert.equal(copyrightLine(2026), '© 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang');
+  assert.equal(copyrightLine(2028), '© 2026–2028 >devcircus_ · www.dev-circus.com · by Patrick B. Stang');
+  assert.ok(!copyrightLine().includes('@'), 'no e-mail address in the line');
 });
 
 test('settings and token round trip, missing files give defaults', async () => {

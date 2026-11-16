@@ -1,3 +1,4 @@
+// © 2026 >devcircus_ · www.dev-circus.com · by Patrick B. Stang
 // Tiny terminal helpers: colors, questions, hidden password input.
 
 import readline from 'node:readline';
