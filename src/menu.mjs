@@ -218,16 +218,18 @@ async function login() {
     return pause();
   }
   await ask(dim('  Weiter mit Enter ... '));
+  const dir = projectDir();
+  await fsp.mkdir(dir, { recursive: true });
   busy = true;
   try {
-    await runClaude({ bin: P.claude, args: ['setup-token'], cwd: projectDir(), env: claudeEnv({ dataDir }), copyDir: path.join(workDir, 'bin') });
+    await runClaude({ bin: P.claude, args: ['setup-token'], cwd: dir, env: claudeEnv({ dataDir }), copyDir: path.join(workDir, 'bin') });
   } catch (err) {
     say(red(`  Konnte Claude nicht starten: ${err.message}`));
   } finally {
     busy = false;
   }
   say('');
-  const pasted = await askHidden('  Schlüssel einfügen (leer lassen = abbrechen): ');
+  const pasted = await askHidden('  Schlüssel einfügen (leer lassen = abbrechen): ', { paste: true });
   if (!pasted.trim()) return;
   const c = classifyToken(pasted);
   if (!c) {

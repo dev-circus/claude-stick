@@ -47,12 +47,36 @@ export async function pause(text = 'Weiter mit Enter ...') {
   await ask(dim(text));
 }
 
-/** Reads a secret without echoing it. Ctrl+C rejects. */
-export function askHidden(question) {
+/**
+ * Applies one typed character to state.buf and says what happened:
+ * 'enter', 'cancel', 'char' (something was added) or 'none'.
+ * In paste mode spaces and tabs are dropped, because a key copied across two lines
+ * arrives with an indent in the middle.
+ */
+export function applyKey(state, ch, paste = false) {
+  if (ch === '\r' || ch === '\n') return 'enter';
+  if (ch === '\u0003') return 'cancel';
+  if (ch === '\u007f' || ch === '\b') {
+    state.buf = state.buf.slice(0, -1);
+    return 'none';
+  }
+  if (ch > ' ' || (ch === ' ' && !paste)) {
+    state.buf += ch;
+    return 'char';
+  }
+  return 'none';
+}
+
+/**
+ * Reads a secret without echoing it. Ctrl+C rejects.
+ * With `paste: true` whitespace is dropped and Enter only ends the input once nothing more
+ * arrives for a moment, so a key that was copied across two lines still comes out in one piece.
+ */
+export function askHidden(question, { paste = false } = {}) {
   return new Promise((resolve, reject) => {
     const stdin = process.stdin;
-    process.stdout.write(question);
     if (!stdin.isTTY) {
+      process.stdout.write(question);
       const rl = readline.createInterface({ input: stdin });
       rl.once('line', (line) => {
         rl.close();
@@ -60,26 +84,34 @@ export function askHidden(question) {
       });
       return;
     }
-    let buf = '';
+    let timer = null;
     const finish = (fn, value) => {
+      clearTimeout(timer);
       stdin.setRawMode(false);
       stdin.pause();
       stdin.off('data', onData);
       process.stdout.write('\n');
       fn(value);
     };
+    const state = { buf: '' };
     const onData = (chunk) => {
       for (const ch of chunk) {
-        if (ch === '\r' || ch === '\n') return finish(resolve, buf);
-        if (ch === '\u0003') return finish(reject, new Error('abgebrochen'));
-        if (ch === '\u007f' || ch === '\b') buf = buf.slice(0, -1);
-        else if (ch >= ' ') buf += ch;
+        const action = applyKey(state, ch, paste);
+        if (action === 'cancel') return finish(reject, new Error('abgebrochen'));
+        if (action === 'enter') {
+          if (!paste) return finish(resolve, state.buf);
+          clearTimeout(timer);
+          timer = setTimeout(() => finish(resolve, state.buf), 300);
+        } else if (action === 'char') {
+          clearTimeout(timer);
+        }
       }
     };
     stdin.setEncoding('utf8');
-    stdin.setRawMode(true);
+    stdin.setRawMode(true); // before the prompt appears, so nothing typed or pasted can be echoed
     stdin.resume();
     stdin.on('data', onData);
+    process.stdout.write(question);
   });
 }
 

@@ -9,6 +9,7 @@ import path from 'node:path';
 import { detectPlatform, paths, PLATFORMS } from '../src/config.mjs';
 import { classifyToken, tokenEnv, loadSettings, saveSettings, saveToken, loadToken, DEFAULT_SETTINGS } from '../src/state.mjs';
 import { backupVault } from '../src/backup.mjs';
+import { applyKey } from '../src/ui.mjs';
 import { downloadVerified } from '../src/download.mjs';
 import { findChromium, mcpConfig, claudeEnv, runClaude } from '../src/runner.mjs';
 
@@ -41,6 +42,20 @@ test('login keys are recognised and mapped to the right variable', () => {
   assert.deepEqual(tokenEnv(oauth), { CLAUDE_CODE_OAUTH_TOKEN: oauth });
   assert.deepEqual(tokenEnv(api), { ANTHROPIC_API_KEY: api });
   assert.deepEqual(tokenEnv(null), {});
+});
+
+test('a key pasted across two lines is joined, a password keeps its spaces', () => {
+  const feed = (text, paste) => {
+    const s = { buf: '' };
+    const actions = [];
+    for (const ch of text) actions.push(applyKey(s, ch, paste));
+    return { buf: s.buf, actions };
+  };
+  assert.equal(feed('sk-ant-oat01-AAAA\r\n  BBBB\r', true).buf, 'sk-ant-oat01-AAAABBBB');
+  assert.equal(feed('a b c', false).buf, 'a b c');
+  assert.equal(feed('abc\u007f\u007fx', false).buf, 'ax');
+  assert.ok(feed('x\r', false).actions.includes('enter'));
+  assert.ok(feed('\u0003', false).actions.includes('cancel'));
 });
 
 test('settings and token round trip, missing files give defaults', async () => {
