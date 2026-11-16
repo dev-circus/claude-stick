@@ -55,7 +55,11 @@ and keeps the newest 10 copies. It also does this automatically when the menu is
 
 ## Known limits
 
-- Windows and Linux are not tested on real machines yet; only macOS is.
+- macOS is tested. On Windows the stick was blocked by a company group policy (programs from
+  removable drives are not allowed); Windows without such a policy and Linux are still untested.
+- Computers with application control (AppLocker, group policy, managed company laptops) do not
+  run programs from a stick. This is intended behaviour of those systems and is not worked
+  around. Use claude.ai in a browser there.
 - Chromium on Linux needs the usual desktop libraries (nss, gtk).
 - Linux may mount sticks without permission to run programs. `Start-Linux.sh` falls back to a
   copy in `~/.cache/claude-stick`.
