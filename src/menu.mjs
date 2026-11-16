@@ -11,7 +11,7 @@ import { loadSettings, saveSettings, loadToken, saveToken, classifyToken, tokenE
 import { backupVault } from './backup.mjs';
 import { runClaude, claudeEnv, prepareBrowser, mcpConfig } from './runner.mjs';
 import { getClaudeRelease, installClaude, installedClaudeVersion } from './download.mjs';
-import { ask, askHidden, bold, choose, clear, confirm, cyan, dim, green, pause, red, say, yellow } from './ui.mjs';
+import { ask, askHidden, bold, clear, confirm, cyan, dim, green, pause, red, say, selectMenu, status, yellow } from './ui.mjs';
 
 const ROOT = path.resolve(process.env.STICK_ROOT ?? path.join(import.meta.dirname, '..'));
 const KEY = detectPlatform();
@@ -25,6 +25,9 @@ let settings = null;
 let token = null;
 let busy = false;
 let closing = false;
+let lastMain = 0; // the highlight returns to where you were
+let lastMore = 0;
+const HELP = '↑ ↓ auswählen   Enter bestätigen   oder die Zahl tippen';
 
 const isDir = (p) => {
   try {
@@ -87,7 +90,7 @@ async function shutdown() {
 function banner() {
   clear();
   say(bold(cyan('  CLAUDE-STICK')) + dim(`   ${PLATFORMS[KEY].label}`));
-  say(dim('  ─────────────────────────────────────────────────'));
+  say(dim('  ═══════════════════════════════════════════════════'));
 }
 
 // --- First start and unlock ----------------------------------------------------------
@@ -162,16 +165,17 @@ async function chooseProject() {
     .map((d) => d.name)
     .sort();
   say(bold('  In welchem Ordner soll Claude arbeiten?'));
+  say(dim('  Dateien in Projektordnern auf dem Stick sind nicht verschlüsselt.'));
+  say(dim(`  ${HELP}`));
   say('');
-  names.forEach((n, i) => say(`  ${i + 1}  ${n}  ${dim('(auf dem Stick)')}`));
-  say(`  n  Neuen Ordner auf dem Stick anlegen`);
-  say(`  e  Einen anderen Ordner auf diesem Computer eingeben`);
-  say(`  0  Zurück`);
-  say('');
-  say(dim('  Hinweis: Dateien in Projektordnern auf dem Stick sind nicht verschlüsselt.'));
-  say('');
-  const items = [...names.map((_, i) => ({ key: String(i + 1) })), { key: 'n' }, { key: 'e' }, { key: '0' }];
-  const pick = await choose(items);
+  const items = [
+    ...names.map((n, i) => ({ key: String(i + 1), label: n, hint: 'auf dem Stick' })),
+    { key: 'n', label: 'Neuen Ordner auf dem Stick anlegen' },
+    { key: 'e', label: 'Anderen Ordner auf diesem Computer eingeben' },
+    { key: '0', label: 'Zurück', gapBefore: true },
+  ];
+  const current = names.findIndex((n) => path.join(P.projects, n) === settings.projectDir);
+  const pick = await selectMenu(items, { initial: Math.max(current, 0) });
   if (pick === '0') return;
   if (pick === 'n') {
     const name = (await ask('  Name des neuen Ordners: ')).replace(/[\\/:*?"<>|]/g, '').trim();
@@ -366,14 +370,19 @@ async function moreMenu() {
   for (;;) {
     banner();
     say(bold('  Mehr'));
+    say(dim(`  ${HELP}`));
     say('');
-    say('  1  Passwort ändern');
-    say(`  2  Backup-Ordner ändern ${dim(settings.backupDir ? `(jetzt: ${settings.backupDir})` : '(noch keiner)')}`);
-    say('  3  Claude auf dem Stick aktualisieren (braucht Internet)');
-    say('  4  Info');
-    say('  0  Zurück');
-    say('');
-    const pick = await choose(['1', '2', '3', '4', '0'].map((key) => ({ key })));
+    const pick = await selectMenu(
+      [
+        { key: '1', label: 'Passwort ändern' },
+        { key: '2', label: 'Backup-Ordner ändern', hint: settings.backupDir ?? 'noch keiner' },
+        { key: '3', label: 'Claude auf dem Stick aktualisieren', hint: 'braucht Internet' },
+        { key: '4', label: 'Info' },
+        { key: '0', label: 'Zurück', gapBefore: true },
+      ],
+      { initial: lastMore },
+    );
+    lastMore = ['1', '2', '3', '4', '0'].indexOf(pick);
     if (pick === '0') return;
     if (pick === '1') await changePassword();
     if (pick === '2') await setBackupDir();
@@ -385,20 +394,27 @@ async function moreMenu() {
 async function mainMenu() {
   for (;;) {
     banner();
-    say(`  Projektordner  ${projectDir()}`);
-    say(`  Browser        ${settings.browser ? green('an') : 'aus'}`);
-    say(`  Login          ${token ? green('gespeichert') : yellow('noch nicht eingerichtet')}`);
-    say(`  Backup         ${settings.backupDir ?? dim('noch nicht eingerichtet')}`);
+    say(status('Ordner', 'ok', projectDir()));
+    say(status('Browser', settings.browser ? 'ok' : 'off', settings.browser ? 'an' : 'aus'));
+    say(status('Login', token ? 'ok' : 'warn', token ? 'gespeichert' : 'noch nicht eingerichtet (Punkt 4)'));
+    say(status('Backup', settings.backupDir ? 'ok' : 'off', settings.backupDir ?? 'noch nicht eingerichtet'));
     say('');
-    say(bold('  1  Claude starten'));
-    say('  2  Projektordner wählen');
-    say('  3  Browser für Claude ein- oder ausschalten');
-    say('  4  Anmelden (einmalig einrichten)');
-    say('  5  Backup jetzt machen');
-    say('  6  Mehr (Passwort, Backup-Ordner, Update)');
-    say('  0  Beenden (alles wird verschlüsselt gespeichert)');
+    say(dim(`  ${HELP}`));
     say('');
-    const pick = await choose(['1', '2', '3', '4', '5', '6', '0'].map((key) => ({ key })));
+    const keys = ['1', '2', '3', '4', '5', '6', '0'];
+    const pick = await selectMenu(
+      [
+        { key: '1', label: 'Claude starten', primary: true },
+        { key: '2', label: 'Projektordner wählen' },
+        { key: '3', label: 'Browser für Claude', hint: settings.browser ? 'ausschalten' : 'einschalten' },
+        { key: '4', label: 'Anmelden', hint: token ? 'neu einrichten' : 'einmalig nötig' },
+        { key: '5', label: 'Backup jetzt machen' },
+        { key: '6', label: 'Mehr', hint: 'Passwort, Backup-Ordner, Update' },
+        { key: '0', label: 'Beenden', hint: 'speichert alles verschlüsselt', gapBefore: true },
+      ],
+      { initial: lastMain },
+    );
+    lastMain = keys.indexOf(pick);
     if (pick === '0') return;
     if (pick === '1') await startClaude();
     if (pick === '2') await chooseProject();
