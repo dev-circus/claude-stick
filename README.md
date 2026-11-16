@@ -108,7 +108,8 @@ tests on Linux, macOS and Windows.
 
 ## License
 
-All rights reserved until a license is added.
+MIT, see [LICENSE](LICENSE). This covers the code of this project only. Claude Code, Node.js and
+Chromium are downloaded from their publishers and stay under their own terms.
 
 ---
 

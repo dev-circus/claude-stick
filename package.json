@@ -4,7 +4,7 @@
   "private": true,
   "description": "Portable Claude Code for macOS, Windows and Linux with an encrypted vault and a small terminal menu",
   "author": "Patrick B. Stang",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
